@@ -46,6 +46,8 @@ Agent 启动时，用户以 JSON 格式提供异常上下文。Agent 必须解�
 | `branch` | string | 否 | 代码分支。作为 `export_patch` 的默认 `target_branch` | P4: export_patch MCP 工具 |
 | `gdb_port` | int/str | 否 | GDB server 端口/socket，有则直连 | P1-P2 |
 | `gdb_script` | string | 否 | GDB 初始化脚本路径 | P1-P2 |
+| `gdb_rpc_host` | string | 否 | gdbrpc socket server 主机地址；非本机（跨机器/跨容器）时传入，供 `mcp__gdb-mcp__gdb_connect(host=..., port=...)` 使用；缺省则按本机连接 | P1-P2 |
+| `gdb_rpc_port` | int | 否 | gdbrpc socket server 端口；与 `gdb_rpc_host` 配合使用，缺省时退回 `gdb_port` 解析出的端口 | P1-P2 |
 | `core_dump_path` | string | 否 | coredump 文件路径 | P1-P2 |
 | `log_path` | string | 否 | 运行日志路径 | P1-P2 |
 | `test_case` | string | 否 | 触发异常的测试用例（pytest 格式） | P1-P2 |
@@ -195,7 +197,7 @@ tmux new-session -d -s "$SESSION" -x 220 -y 50 \
   -ex 'py import gdbrpc' -ex 'gdbrpc start'"
 sleep 3 && tmux capture-pane -t "$SESSION" -p | grep "started on"
 ```
-然后 `gdb_connect(port=<parsed_port>)` 连接。
+然后 `gdb_connect(port=<parsed_port>)` 连接；若输入含 `gdb_rpc_host`/`gdb_rpc_port`，改用 `gdb_connect(host=<gdb_rpc_host>, port=<gdb_rpc_port>)` 连接非本机的 gdbrpc socket server。
 
 ### 模式 C: Attach 宿主进程（有 pid 且进程存活，无 core_dump_path / gdb_port）
 
