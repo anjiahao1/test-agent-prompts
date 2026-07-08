@@ -606,7 +606,9 @@ rwt status
   - ❌ `commit_hash` → ✅ `commit`
   - ❌ `gerrit_url` / `gerrit_change_id` → 字段已删除
 - `patch_urls` 元素必须来自 Phase 4.2 的 `export_patch` 返回值的 `patches[i].patch_url`；**禁止从记忆、输入 JSON 或历史 session 中编造**
+- 若 `export_patch` 的 JSON 返回在上下文里看不到（harness 截断）：**禁止**按 object-key 模式自行拼 URL（bucket/slug/filename 会拼错）；把 `patch_urls`/`patch_filenames`/`patch_sha256s` 置 `[]`、`export_status="unknown"`，引擎会据 `export_patch` 落盘的 manifest 用权威值覆盖回填
 - 若 export 失败或跳过：`patch_urls` / `patch_filenames` / `patch_sha256s` 都置为 `[]`（不要填 null、不要省略字段、不要编造 URL），`patch_size_bytes=0`，`commits_count=0`，`export_status="failed"`，`export_error` 给出原因
+- **引擎兜底**：上报前 `ai-agent-service` 会用 `export_patch` 落盘的 `_manifest.json` 覆盖 `patch_urls`/`patch_filenames`/`patch_sha256s`/`patch_size_bytes`/`commits_count`/`commit`/`owners`/`files_changed`/`export_status`（按 `repo` 匹配）。仍须如实填写 `repo` 字段以便匹配
 
 **语义说明：**
 - `patch`：数组，每个元素对应一个仓库。修复成功填充，失败则 `null`
