@@ -39,7 +39,7 @@ Agent 启动时，用户以 JSON 格式提供异常上下文。Agent 必须解�
 
 | 字段 | 类型 | 必填 | 说明 | 使用阶段 |
 |------|------|------|------|---------|
-| `exception_type` | string | 是 | 异常类型：`crash`/`busyloop`/`testcase` | 类型识别 |
+| `exception_type` | string | 是 | 异常类型：`crash`/`busyloop`/`testcase`/`health_check_failed` | 类型识别 |
 | `elf_path` | string | 是 | ELF 文件路径（含调试符号） | P1-P2: GDB 加载 |
 | `source_root` | string | 是 | 源码根目录（含 `.repo/`） | P2-P3: workspace 不可用时的 fallback |
 | `product` | string | 是 | 产品/目标板名称 | P3: 构建配置 |
@@ -55,6 +55,7 @@ Agent 启动时，用户以 JSON 格式提供异常上下文。Agent 必须解�
 | `result_output_dir` | string | 否 | 结果 JSON 输出目录（优先级最高） | P5 |
 | `pid` | int | 否 | 异常进程 / 任务 PID。两种语义：① **宿主进程 PID**（`product=sim*/qemu*` 等，被测系统以宿主进程运行，无 `core_dump_path`/`gdb_port` 时直接 `gdb -p <pid>` attach，见 Mode C）；② **NuttX 任务 PID**（真机 / coredump 场景，**非** GDB thread ID，GDB 连上后用它在 `ps` 输出里定位崩溃任务，见下文「pid 字段的 GDB 用法」）。区分：无 core/port 且为仿真产品 → 语义①；有 core/port → 语义② | P1-P2 |
 | `extra_context` | object | 否 | 附加上下文（signal、fault_address 等） | P2 |
+| `diagnose_report` | array | 否 | 重启/健康检查诊断报告列表（`exception_type=health_check_failed` 时透传）；每项含 title/summary/result/category/command/data | P1 |
 | `timestamp` | string | 否 | 异常时间（ISO 8601） | P5 |
 | `build_config_path` | string | 否 | 构建实际 `.config`（引擎从 `elf_path` 同级派生）。需确认 Kconfig 开关时**优先读它**，不要 `find .config` | P1-P3 |
 | `build_manifest_path` | string | 否 | 构建快照 manifest（引擎派生），记录各仓库构建 commit。判断「构建是否含 base 外 open patch」时读它与 `git -C <repo> rev-parse HEAD` 比对，替代 `git merge-base` 反推 | P1 |
