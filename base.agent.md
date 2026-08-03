@@ -17,6 +17,13 @@
 10. **分析必须落地为 patch（核心交付物）** — 一旦 Phase 1 根因分析定位到「可修复的根因」（被测代码 / pytest 用例 / VTF 引擎侧的具体缺陷），就**必须**基于该分析走完 Phase 3/4 产出并 `export_patch` 一个 patch，**禁止**只写诊断结论 / `analysis_report.md` 就收尾。只有 `ai_debug_result.json` 的 `patch` 非空且 `status="patch_generated"` 才算闭环
     - **仅两类合法例外**可 `patch=[]` + `status="failed_to_fix"`：① `source_missing_on_base`（N1 硬约束，见 Phase 3.2，被测程序/源码在 base HEAD 缺失时禁止凭空重建）；② 3 轮 AI 自检仍无法得到正确修复（见 Phase 3.3）
     - 除上述两类，「已定位到根因却不产出 patch」一律视为 violation
+11. **根因归属顺序：先查 C 代码，再查 python 用例（硬约束，适用于所有 case 失败场景）** — 只要本次异常是在跑测试用例过程中暴露的（输入含 `test_case`，无论 `exception_type` 是 `testcase` / `crash` / `busyloop`），**默认假设根因在被测 C 代码（项目交付物）侧**
+    - **Step 1（必做，不可跳过）**：完整核查被测 C 程序 —— `_main` 及被触发调用链**全文**读完（禁止只看片段凭函数名猜），逐项核对返回值 / 错误码 / exit code、日志文本与顺序次数时序、crash / assert / NULL deref / 越界、竞态 / 未初始化、资源泄漏 / 死循环、依赖的 Kconfig 与设备节点。发现任一异常 → 根因归 C 代码，**不再进 Step 2**
+    - **Step 2（仅在 Step 1 确认 C 代码行为正确后执行）**：核查 pytest 用例脚本 —— 期望 pattern / 正则、timeout、fixture 前置条件、parametrize / marks、断言与日志产生顺序
+    - **Step 3（仅在 Step 1、2 均确认无异常后执行）**：核查 VTF 引擎代码
+    - **禁止行为（violation）**：跳过 Step 1 直接改 pytest 脚本；以「用例期望不合理」为由放宽断言 / 拉长 timeout / 放松 pattern 让用例过（掩盖真 bug、让回归用例失去护栏）；Step 1 未完成就并行修两边
+    - 归属结论写入 `diagnosis.root_cause` 必须带前缀：`testee_bug:` / `testcase_bug:` / `vtf_engine_bug:`。归 `testcase_bug` / `vtf_engine_bug` 时，`analysis_report.md` 必须给出「已确认被测 C 代码行为正确」的依据
+    - 详细清单见 `phase1-testcase-failure.md`「根因优先级（Root Cause Priority，硬约束）」章节
 
 ## Skills（强制使用）
 

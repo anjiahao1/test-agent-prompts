@@ -15,4 +15,11 @@ busyloop 场景特别注意：死循环的根因（退出条件缺失 / 等待�
 
 定位到死循环的可修复根因后，**必须**基于该分析走完 Phase 3/4 产出 patch（见 base.agent.md 核心约束 #1、#10），不允许只给诊断结论收尾。
 
+### 根因归属顺序（busyloop 由测试用例触发时适用）
+
+若本次死循环是在跑测试用例过程中暴露的（输入含 `test_case`），根因归属按 base.agent.md 核心约束 #11 执行：**先确认被测 C 代码是否有问题（退出条件、等待事件、锁释放、超时处理），确认无异常后再确认 pytest 用例脚本是否有问题**，两者都无异常才轮到 VTF 引擎。
+
+- busyloop 尤其容易被误判成「用例 timeout 设得太短」。**禁止**在未完成 C 代码 Step 1 核查前就去拉长 `timeout` —— 真死循环拉再长也不会过，拉长只会掩盖问题并拖慢 CT
+- `diagnosis.root_cause` 带 `testee_bug:` / `testcase_bug:` / `vtf_engine_bug:` 前缀；两步判定细则见 `phase1-testcase-failure.md`「根因优先级」章节
+
 **自动进入 Phase 2。**

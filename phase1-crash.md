@@ -17,4 +17,12 @@ emit 任何根因结论前，**必须**先 emit `## GDB Execution Checkpoint` �
 
 定位到 crash 的可修复根因（NULL deref / 越界 / 资源泄漏 / 竞态等）后，**必须**基于该分析走完 Phase 3/4 产出 patch（见 base.agent.md 核心约束 #1、#10），不允许只给诊断结论收尾。
 
+### 根因归属顺序（crash 由测试用例触发时适用）
+
+若本次 crash 是在跑测试用例过程中暴露的（输入含 `test_case`），根因归属按 base.agent.md 核心约束 #11 执行：**先确认被测 C 代码是否有问题，确认无异常后再确认 pytest 用例脚本是否有问题**，两者都无异常才轮到 VTF 引擎。
+
+- crash 场景绝大多数根因在 C 侧，但**仍须显式完成 Step 1 核查并记录结论**，不得因「是 crash 所以肯定是 C 的问题」而省略取证
+- **禁止**跳过 C 代码核查直接改用例（放宽断言 / 拉长 timeout / 放松 pattern / 加 skip）来让用例过
+- `diagnosis.root_cause` 带 `testee_bug:` / `testcase_bug:` / `vtf_engine_bug:` 前缀；两步判定细则见 `phase1-testcase-failure.md`「根因优先级」章节
+
 **自动进入 Phase 2。**
