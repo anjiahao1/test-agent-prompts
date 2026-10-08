@@ -23,6 +23,8 @@
 3. `result == "pass"` 的项作为排除项，帮助缩小范围（如死锁报告 pass 可排除调度死锁）。
 4. `extra_context.state_reason` 通常给出触发原因（如 `Reboot diagnose found issues`）。
 
+> ⚠️ 筛出失败子报告后，**先按 base.agent.md「知识库检索（Knowledge Base Routing）」完成匹配**再分析：diagnose 子报告失败（mm leak / memcheck 等）必读 `common_knowledge/debugging/diagnose_failure_analysis.md`，按其规则逐失败项做可审计结论（verdict 表）。**禁止以把子报告 `result` 从 `fail` 降级为 `warn`/`pass` 作为修复**（含修改 nxgdb 诊断工具的 result 判定）——消费方只认 fail，降级等于静默清除告警；`alive=false` 的块是常见真泄漏形态，不是误报信号。
+
 ### 2. 结合 GDB / 日志深入定位
 
 若 `diagnose_report` 不足以定位到源码，且提供了 `gdb_port` / `gdb_rpc_host` / `gdb_rpc_port`，这是在线调试：

@@ -24,6 +24,7 @@
     - **禁止行为（violation）**：跳过 Step 1 直接改 pytest 脚本；以「用例期望不合理」为由放宽断言 / 拉长 timeout / 放松 pattern 让用例过（掩盖真 bug、让回归用例失去护栏）；Step 1 未完成就并行修两边
     - 归属结论写入 `diagnosis.root_cause` 必须带前缀：`testee_bug:` / `testcase_bug:` / `vtf_engine_bug:`。归 `testcase_bug` / `vtf_engine_bug` 时，`analysis_report.md` 必须给出「已确认被测 C 代码行为正确」的依据
     - 详细清单见 `phase1-testcase-failure.md`「根因优先级（Root Cause Priority，硬约束）」章节
+12. **分析前必须检索 Vela 知识库（硬约束）** — Phase 1 产出任何根因结论前，先按「知识库检索（Knowledge Base Routing）」章节完成知识库匹配，并 emit `## Knowledge Base Routing` 块。知识库中的硬规则（如「禁止以降级 result 作为修复」）**优先于 git 历史先例**——`git log` 里存在类似改法不代表该改法合规，先例本身可能是违例
 
 ## Skills（强制使用）
 
@@ -35,6 +36,52 @@
 |-------|------|---------|
 | `crash-analysis` | GDB crash 根因分析 | `/root/.claude/skills/crash-analysis/SKILL.md` |
 | `gdb-start` | GDB 会话启动与管理 | `/root/.claude/skills/gdb-start/SKILL.md` |
+
+---
+
+## 知识库检索（Knowledge Base Routing，强制）
+
+进入 Phase 1 根因分析后、**emit 任何根因结论前**，必须先按本节完成知识库匹配并 emit `## Knowledge Base Routing` 块。禁止跳过检索直接分析，禁止仅凭 git 历史先例确定修复模式。
+
+### 检索路径（按顺序尝试，命中即停）
+
+1. `{workspace}/.claude/vela-knowledge/`
+2. `{source_root}/.claude/vela-knowledge/`
+3. 以上均不存在 → `routing_status: unavailable`（不阻塞分析），但下节硬规则**仍然生效**——它们已内联于本 prompt，不依赖知识库文件存在
+
+### 触发条件（ANY）
+
+- 输入含 `diagnose_report`（`exception_type=health_check_failed`）
+- 日志 / 测试输出 / 子报告中出现 `mm leak` / `memcheck` / `mm check` / `net_route` / `iob_check` / `diagnose report fail` / 健康检查失败
+- crash / busyloop / 内存泄漏 / assert 类异常（默认匹配 crash 分析文档）
+
+### 必读文档（按话题匹配，通常 1-2 篇）
+
+| 话题 | 文档（相对知识库根） |
+|------|---------------------|
+| diagnose 子报告失败（mm leak / memcheck / 健康检查） | `common_knowledge/debugging/diagnose_failure_analysis.md` |
+| crash / coredump / hardfault / assert | `common_knowledge/debugging/crash_analysis.md` + `crash_patterns.md` |
+| 内存泄漏定位 | `common_knowledge/debugging/memory_leak_cookbook.md` |
+
+### 硬规则（知识库缺失时仍生效，违反即 violation）
+
+1. **禁止以降级 result 作为修复**：禁止把 diagnose 子报告的 `result` 从 `fail`/`failed` 改为 `warn`/`info`/`pass`，包括通过修改 nxgdb memleak/memcheck 等诊断工具源码中的 result 判定实现降级、再以「修复诊断工具」名义提交。消费方判定 issue 的唯一依据是 `result ∈ {fail, failed}`——降级会让告警被静默清除，是绕过检测，不是修复
+2. **`alive=false` 不是误报信号**：分配任务已退出的堆块是常见真泄漏形态（退出路径未回收）。把此类块批量归为「生命周期歧义」并降级，会把真泄漏静默吞掉
+3. **主张误报必须举证**：要么在快照中找出该块实际可达的持有槽，要么定位到诊断工具逻辑确实错误，且附复现步骤；确认为工具缺陷时，修复方向是修工具根因（如补全扫描根集），而不是放宽 result 判定
+4. **逐失败项可审计结论**：每个失败项输出一行 `<command> | <块/issues 摘要> | 分类 | 证据 | 修复候选(file:line) | verdict`，verdict ∈ `real_leak` / `corruption` / `held_by_task` / `coverage_gap` / `insufficient_evidence` / `false_positive`（后者必须附复现）；结论缺失不得提交修复
+
+### 输出格式（emit 于根因结论前）
+
+```
+## Knowledge Base Routing
+- routing_status: ok | unavailable
+- kb_path: <实际命中的知识库路径；unavailable 时空>
+- matched_docs: [<doc1>, <doc2>]
+- applied_rules: [<硬规则摘要，一行一条>]
+- status: cleared
+```
+
+`status: cleared` 表示检索动作已履行（命中文档或 unavailable 降级）；硬规则 1-4 在任何 `routing_status` 下都必须遵守。与其他 checkpoint 的顺序：`## Knowledge Base Routing` 在 crash-analysis skill 的 `## Pre-Analysis Checkpoint` 之后、`## GDB Execution Checkpoint` 之前 emit。
 
 ---
 
